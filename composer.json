@@ -1,0 +1,30 @@
+{
+	"name": "kbs1/encrypted-api-server-laravel",
+	"description": "Encrypted API - laravel server implementation.",
+	"type": "library",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "kbs1",
+			"email": "viliam.kubis@gmail.com"
+		}
+	],
+	"require": {
+		"php": ">=7.0",
+		"laravel/laravel": ">=5.4",
+		"kbs1/encrypted-api-base": "~1.0",
+		"guzzle/guzzle": "~3.9"
+	},
+	"autoload": {
+		"psr-4": {
+			"Kbs1\\EncryptedApiServerLaravel\\": "src/"
+		}
+	},
+	"extra": {
+		"laravel": {
+			"providers": [
+				"Kbs1\\EncryptedApiServerLaravel\\Providers\\EncryptedApiServiceProvider"
+			]
+		}
+	}
+}
