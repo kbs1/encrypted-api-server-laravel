@@ -9,7 +9,6 @@ use Kbs1\EncryptedApiServerLaravel\Exceptions\Middleware\RequestIdAlreadyProcess
 use Kbs1\EncryptedApiServerLaravel\Exceptions\Middleware\InvalidRequestUrlException;
 use Kbs1\EncryptedApiServerLaravel\Exceptions\Middleware\InvalidRequestMethodException;
 
-// TODO: user BrowserKit\CookieJar::updateFromSetCookie instead?
 use Symfony\Component\HttpFoundation\Cookie;
 
 class IncomingRequest
@@ -31,7 +30,7 @@ class IncomingRequest
 		$this->checkUrl($input);
 		$this->checkMethod($input);
 
-		$this->setInputData($input);
+		$this->setRequestData($input);
 	}
 
 	public function getId()
@@ -75,62 +74,91 @@ class IncomingRequest
 			throw new InvalidRequestMethodException();
 	}
 
-	protected function setInputData($input)
+	protected function setRequestData($input)
 	{
-		// query string is correctly parsed, as it is always unencrypted, no need to modify $request->query
-		// request attributes are not normally populated by Laravel, so don't touch them
-		// don't touch $request->files, since we don't support encrypted file uploads
-
-		// replace body parameters and request content
+		// compute new POST parameters and request content
 		if (is_array($input['data'])) {
-			$this->request->request->replace($input['data']);
-			$this->request->setContent('');
+			// parse request data same way as PHP natively does (parse_str)
+			parse_str(http_build_query($input['data']), $request);
+			$content = '';
 		} else {
-			$this->request->setContent((string) $input['data']);
+			$request = [];
+			$content = (string) $input['data'];
 		}
 
-		// replace request headers
-		if (is_array($input['headers']))
-			$this->request->headers->replace($input['headers']);
+		// compute cookies from "Cookie" header
+		$cookies = $this->parseCookieHeader((array) $input['headers']);
 
-		// parse and replace any cookies present
-		$cookies = $this->parseCookie($this->request->headers->get('COOKIE')); // TODO: decode cookies?
-		$this->request->cookies->replace($cookies); // TODO: test array cookies http://php.net/manual/en/function.setcookie.php
+		// override $_SERVER variables that would normally be populated if encrypted headers were sent
+		// code based on Symfony\Component\HttpFoundation\Request::overrideGlobals
+		foreach ($headers as $key => $value) {
+			$key = strtoupper(str_replace('-', '_', $key));
+			if (in_array($key, array('CONTENT_TYPE', 'CONTENT_LENGTH'))) {
+				$_SERVER[$key] = implode(', ', $value);
+			} else {
+				$_SERVER['HTTP_' . $key] = implode(', ', $value);
+			}
+		}
 
-		// finally override PHP globals
+		// initialize the request with new values, this also clears computed request properties such as "encodings" or "languages"
+		// $_GET is never changed, as query string is never encrypted
+		// $_FILES is never changed, as we don't support encrypted files transmission over multipart/form-data
+		$this->request->initialize($_GET, $request, array(), $cookies, $_FILES, $_SERVER, $content);
+
+		// finally override all request related PHP globals
 		$this->request->overrideGlobals();
 	}
 
-	// parse received "Cookie" header into multiple cookies, and returns valid cookies as an array
-	// code based on Symfony\Component\BrowserKit\CookieJar::updateFromSetCookie
-	protected function parseCookie($header)
+	// parses "Cookie" header into multiple cookies and returns cookie names and their values for valid cookies as key-value array
+	// resulting cookies are formatted the same way as PHP would register them in the $_COOKIE superglobal (using parse_str)
+	// array cookies are supported, see http://php.net/manual/en/function.setcookie.php
+	// cookies splitting code based on Symfony\Component\BrowserKit\CookieJar::updateFromSetCookie
+	protected function parseCookieHeader(array $headers)
 	{
+		$headers = array_change_key_case($headers);
+		$header = $headers['cookie'] ?? null;
+
+		if (!$header)
+			return [];
+
 		$parsed_cookies = $cookies = [];
 
 		foreach (explode(',', $header) as $i => $part) {
-			if (0 === $i || preg_match('/^(?P<token>\s*[0-9A-Za-z!#\$%\&\'\*\+\-\.^_`\|~]+)=/', $part)) {
+			if ($i === 0 || preg_match('/^(?P<token>\s*[0-9A-Za-z!#\$%\&\'\*\+\-\.^_`\|~]+)=/', $part)) {
 				$parsed_cookies[] = ltrim($part);
 			} else {
-				$parsed_cookies[count($cookies) - 1] .= ','.$part;
+				$parsed_cookies[count($parsed_cookies) - 1] .= ',' . $part;
 			}
 		}
 
 		foreach ($parsed_cookies as $cookie) {
 			try {
-				$cookie = Cookie::fromString($cookie); // TODO: decode?
+				$cookie = Cookie::fromString($cookie); // do not decode the cookie, as parse_str will decode it later
 			} catch (\InvalidArgumentException $ex) {
-				// ignore invalid cookies
-				continue;
+				continue; // ignore invalid cookies
 			}
 
 			if ($cookie->isCleared())
-				continue; // ignore expired cookies
+				continue;
 
-			// TODO: implement checks for getDomain(), getPath(), isSecure(), isHttpOnly(), isRaw(), getSameSite() [lax, strict]?
+			// TODO: implement checks for getDomain(), getPath()?
+
+			if ($this->request->isSecure() === false && $cookie->isSecure() === true)
+				continue;
 
 			$cookies[$cookie->getName()] = $cookie->getValue();
 		}
 
-		return $cookies;
+		// transform each cookie into PHP native format using parse_str, also supporting array cookies (http://php.net/manual/en/function.setcookie.php)
+		// this also replaces some characters into undersores, as PHP would natively do (http://php.net/manual/en/language.variables.external.php#81080)
+		$result = [];
+
+		// cookie name is guaranteed to contain only valid characters (Symfony\Component\HttpFoundation\Cookie::__construct)
+		foreach ($cookies as $name => $value) {
+			parse_str("$name=$value", $cookie);
+			$result = array_merge_recursive($result, $cookie);
+		}
+
+		return $result;
 	}
 }

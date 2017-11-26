@@ -22,10 +22,6 @@ class EncryptedApiServiceProvider extends ServiceProvider
 				GenerateSharedSecretsCommand::class,
 			]);
 		}
-
-		Request::macro('setContent', function ($content) {
-			$this->content = $content;
-		});
 	}
 
 	public function register()
