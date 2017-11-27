@@ -47,10 +47,21 @@ All native PHP variables are overwritten as well, so `$_GET`, `$_POST`, `$_REQUE
 Encrypted files transmission (using `multipart/form-data`) is not supported. If your service relies on files being posted via `multipart/form-data`,
 you will have to modify your service and transmit the files as for example standard base64-encoded parameters.
 
-Implementation checks that the current request URI and query string match originally called route and query string (passed encrypted). This ensures
+Received encrypted requests always contain only basic headers required for encrypted JSON transmission (`Content-Type: application/json` and so on).
+All of your other headers, including your `Content-Type`, `Cookie`, custom headers such as `X-Api-Auth: pwd123` and so on are always transmitted
+securely (encrypted), not present in sent request. After decryption on the server side, original headers will be reconstructed as mentioned above.
+
+This means you do not have to modify your service at all, and use cookies and custom headers as before, only now they will be transmitted encrypted.
+
+PHP and Laravel's `Request` reconstruction works the same way as PHP would natively parse input data, using [parse_str](http://php.net/manual/en/function.parse-str.php).
+This ensures that for example [array cookies](http://php.net/manual/en/function.setcookie.php) work as expected,
+together with [input name mangling](http://php.net/manual/en/language.variables.external.php#81080), magic quotes gpc and so on,
+so that your cookie or form variable `a.x=7` will still be present as `$request->input('a_x')` as it normally would if the request came in unencrypted.
+
+Implementation also checks that the current request URI and query string match originally called route and query string. This ensures
 no one can steal the request mid-way, and send it to another endpoint on your service.
 
-Protection against replay attacks to the same route is also implemented, see "Replay attacks" section below.
+Protection against replay attacks is also implemented, see "Replay attacks" section below.
 
 # Usage
 Once the package is installed, it automatically registers the `kbs1.encryptedApi-v1` middleware alias.

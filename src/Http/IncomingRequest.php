@@ -78,7 +78,7 @@ class IncomingRequest
 	{
 		// compute new POST parameters and request content
 		if (is_array($input['data'])) {
-			// parse request data same way as PHP natively does (parse_str)
+			// parse request data same way as PHP natively does (build HTTP query and then parse_str)
 			parse_str(http_build_query($input['data']), $request);
 			$content = '';
 		} else {
@@ -86,7 +86,7 @@ class IncomingRequest
 			$content = (string) $input['data'];
 		}
 
-		// compute cookies from "Cookie" header
+		// parse cookies from "Cookie" header
 		$cookies = $this->parseCookieHeader((array) $input['headers']);
 
 		// override $_SERVER variables that would normally be populated if encrypted headers were sent
@@ -109,10 +109,9 @@ class IncomingRequest
 		$this->request->overrideGlobals();
 	}
 
-	// parses "Cookie" header into multiple cookies and returns cookie names and their values for valid cookies as key-value array
+	// parses "Cookie" header into multiple cookies and returns cookie names and their values as key-value array
 	// resulting cookies are formatted the same way as PHP would register them in the $_COOKIE superglobal (using parse_str)
 	// array cookies are supported, see http://php.net/manual/en/function.setcookie.php
-	// cookies splitting code based on Symfony\Component\BrowserKit\CookieJar::updateFromSetCookie
 	protected function parseCookieHeader(array $headers)
 	{
 		$headers = array_change_key_case($headers);
@@ -121,42 +120,20 @@ class IncomingRequest
 		if (!$header)
 			return [];
 
-		$parsed_cookies = $cookies = [];
-
-		foreach (explode(',', $header) as $i => $part) {
-			if ($i === 0 || preg_match('/^(?P<token>\s*[0-9A-Za-z!#\$%\&\'\*\+\-\.^_`\|~]+)=/', $part)) {
-				$parsed_cookies[] = ltrim($part);
-			} else {
-				$parsed_cookies[count($parsed_cookies) - 1] .= ',' . $part;
-			}
-		}
-
-		foreach ($parsed_cookies as $cookie) {
-			try {
-				$cookie = Cookie::fromString($cookie); // do not decode the cookie, as parse_str will decode it later
-			} catch (\InvalidArgumentException $ex) {
-				continue; // ignore invalid cookies
-			}
-
-			if ($cookie->isCleared())
-				continue;
-
-			// TODO: implement checks for getDomain(), getPath()?
-
-			if ($this->request->isSecure() === false && $cookie->isSecure() === true)
-				continue;
-
-			$cookies[$cookie->getName()] = $cookie->getValue();
-		}
-
-		// transform each cookie into PHP native format using parse_str, also supporting array cookies (http://php.net/manual/en/function.setcookie.php)
-		// this also replaces some characters into undersores, as PHP would natively do (http://php.net/manual/en/language.variables.external.php#81080)
+		$cookies = array_map('trim', explode(';', $header));
 		$result = [];
 
-		// cookie name is guaranteed to contain only valid characters (Symfony\Component\HttpFoundation\Cookie::__construct)
-		foreach ($cookies as $name => $value) {
-			parse_str("$name=$value", $cookie);
-			$result = array_merge_recursive($result, $cookie);
+		foreach ($cookies as $cookie) {
+			// use Symfony\Component\HttpFoundation\Cookie to make sure cookie name is valid
+			try {
+				new Cookie(explode('=', $cookie)[0]);
+			} catch (\InvalidArgumentException $ex) {
+				continue;
+			}
+
+			// also replaces some characters into undersores, as PHP would natively do (http://php.net/manual/en/language.variables.external.php#81080)
+			parse_str($cookie, $parsed);
+			$result = array_merge_recursive($result, $parsed);
 		}
 
 		return $result;
