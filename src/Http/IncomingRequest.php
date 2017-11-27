@@ -105,8 +105,12 @@ class IncomingRequest
 		// $_FILES is never changed, as we don't support encrypted files transmission over multipart/form-data
 		$this->request->initialize($_GET, $request, array(), $cookies, $_FILES, $_SERVER, $content);
 
-		// finally override all request related PHP globals
+		// now that the request is in correct state, override all related PHP globals
 		$this->request->overrideGlobals();
+
+		// set Laravel's $request->json to null. This will cause replaced request content to be parsed again upon first json access.
+		// helper methods such as isJson will succeed if the original request was json, since the header and server bags are now replaced as well.
+		$this->request->setJson(null);
 	}
 
 	// parses "Cookie" header into multiple cookies and returns cookie names and their values as key-value array
