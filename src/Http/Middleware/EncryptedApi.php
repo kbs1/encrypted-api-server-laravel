@@ -3,6 +3,7 @@
 namespace Kbs1\EncryptedApiServerLaravel\Http\Middleware;
 
 use Kbs1\EncryptedApiServerLaravel\Exceptions\Middleware\InvalidClientIpException;
+use Kbs1\EncryptedApiServerLaravel\Exceptions\Middleware\MiddlewarePriorityException;
 
 use Kbs1\EncryptedApiServerLaravel\Http\IncomingRequest;
 use Kbs1\EncryptedApiServerLaravel\Http\OutgoingResponse;
@@ -20,6 +21,8 @@ class EncryptedApi
 
 	public function handle($request, \Closure $next, $guard = null)
 	{
+		$this->ensureMiddlewarePriority();
+
 		$this->checkIpWhitelist($request);
 		$secrets = $this->getSharedSecrets($request);
 
@@ -61,5 +64,16 @@ class EncryptedApi
 	protected function getAllowedIps($request)
 	{
 		return config('encrypted_api.ipv4_whitelist');
+	}
+
+	protected function ensureMiddlewarePriority()
+	{
+		$message = 'Please make sure kbs1.encryptedApi-v1 middleware is the first middleware to run by modifying any service provider that updates the router $middlewarePriority array in the application\'s "booted" callback.';
+
+		if (!isset($this->app['router']->middlewarePriority[0]))
+			throw new MiddlewarePriorityException($message);
+
+		if ($this->app['router']->middlewarePriority[0] !== 'kbs1.encryptedApi-v1')
+			throw new MiddlewarePriorityException($message);
 	}
 }
