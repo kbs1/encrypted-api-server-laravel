@@ -45,7 +45,8 @@ All native PHP variables are overwritten as well, so `$_GET`, `$_POST`, `$_REQUE
 `php://input` is not overwritten (as this is not possible), so this stream will always contain the encrypted request.
 
 Encrypted files transmission (using `multipart/form-data`) is not supported. If your service relies on files being posted via `multipart/form-data`,
-you will have to modify your service and transmit the files as for example standard base64-encoded parameters.
+you will have to modify your service and transmit the file names and contents as standard parameters. You do not have to encode any binary data
+in any way, as the library handles this transparently.
 
 Received encrypted requests always contain only basic headers required for encrypted JSON transmission (`Content-Type: application/json` and so on).
 All of your other headers, including your `Content-Type`, `Cookie`, custom headers such as `X-Api-Auth: pwd123` and so on are always transmitted
