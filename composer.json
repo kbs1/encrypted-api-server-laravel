@@ -12,8 +12,7 @@
 	"require": {
 		"php": ">=7.0",
 		"laravel/laravel": ">=5.4",
-		"kbs1/encrypted-api-base": "~1.0",
-		"guzzle/guzzle": "~3.9"
+		"kbs1/encrypted-api-base": "~1.0"
 	},
 	"autoload": {
 		"psr-4": {
