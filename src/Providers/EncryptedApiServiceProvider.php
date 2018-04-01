@@ -44,7 +44,7 @@ class EncryptedApiServiceProvider extends ServiceProvider
 		$class::macro('initEncryptedApiResponse', function () {
 			if (!isset($this->overriddenHeaders)) {
 				$this->overriddenHeaders = ['server', 'content-type', 'content-length', 'connection', 'cache-control', 'date'];
-				$this->unencryptedHeaders = [];
+				$this->unencryptedHeaders = $this->unmanagedHeaders = [];
 			}
 
 			return $this;
@@ -64,6 +64,13 @@ class EncryptedApiServiceProvider extends ServiceProvider
 			return $this->unencryptedHeaders;
 		});
 
+		$class::macro('getUnmanagedHeaders', function () {
+			if (!isset($this->overriddenHeaders))
+				$this->initEncryptedApiResponse();
+
+			return $this->unmanagedHeaders;
+		});
+
 		$class::macro('withPlainHeader', function ($name) {
 			if (!isset($this->overriddenHeaders))
 				$this->initEncryptedApiResponse();
@@ -71,7 +78,7 @@ class EncryptedApiServiceProvider extends ServiceProvider
 			$name = strtolower($name);
 
 			if (in_array($name, $this->overriddenHeaders))
-				throw new \InvalidArgumentException($name . ' can not be sent as a plain header.');
+				throw new \InvalidArgumentException($name . ' can not be sent as plain header.');
 
 			if (!in_array($name, $this->unencryptedHeaders))
 				$this->unencryptedHeaders[] = $name;
@@ -89,6 +96,35 @@ class EncryptedApiServiceProvider extends ServiceProvider
 				unset($this->unencryptedHeaders[$key]);
 				$this->unencryptedHeaders = array_values($this->unencryptedHeaders);
 			}
+
+			return $this;
+		});
+
+		$class::macro('withManagedHeader', function ($name) {
+			if (!isset($this->overriddenHeaders))
+				$this->initEncryptedApiResponse();
+
+			$name = strtolower($name);
+
+			if (($key = array_search($name, $this->unmanagedHeaders)) !== false) {
+				unset($this->unmanagedHeaders[$key]);
+				$this->unmanagedHeaders = array_values($this->unmanagedHeaders);
+			}
+
+			return $this;
+		});
+
+		$class::macro('withoutManagedHeader', function ($name) {
+			if (!isset($this->overriddenHeaders))
+				$this->initEncryptedApiResponse();
+
+			$name = strtolower($name);
+
+			if (in_array($name, $this->overriddenHeaders))
+				throw new \InvalidArgumentException($name . ' can not be sent as unmanaged header.');
+
+			if (!in_array($name, $this->unmanagedHeaders))
+				$this->unmanagedHeaders[] = $name;
 
 			return $this;
 		});

@@ -21,14 +21,20 @@ class OutgoingResponse
 		$content = $this->response->content();
 		$this->response->headers->set('Content-Length', strlen($content));
 
-		$encryptor = new Encryptor($this->response->headers->allPreserveCase(), $content, $this->secret1, $this->secret2, $this->id);
+		// compute which headers should be sent unmanaged
+		$headers = $this->response->headers->allPreserveCase();
+		foreach ($headers as $header => $values)
+			if (in_array(strtolower($header), $this->response->getUnmanagedHeaders()))
+				unset($headers[$header]);
+
+		$encryptor = new Encryptor($headers, $content, $this->secret1, $this->secret2, $this->id);
 
 		$this->response->setContent($transmit = $encryptor->getTransmit());
 
 		foreach ($this->response->getOverriddenHeaders() as $header)
 			$this->response->headers->remove($header);
 
-		$unencryptedHeaders = $this->response->getUnencryptedHeaders();
+		$unencryptedHeaders = array_merge($this->response->getUnencryptedHeaders(), $this->response->getUnmanagedHeaders());
 		foreach ($this->response->headers->all() as $header => $values)
 			if (!in_array($header, $unencryptedHeaders))
 				$this->response->headers->remove($header);

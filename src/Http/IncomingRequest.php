@@ -131,7 +131,7 @@ class IncomingRequest
 			});
 		}
 
-		// override $_SERVER variables that would normally be populated if unencrypted headers were sent
+		// override $_SERVER variables with headers that are present in encrypted payload
 		// code *based* on (not the same!) Symfony\Component\HttpFoundation\Request::overrideGlobals
 		foreach ($input['headers'] as $key => $value) {
 			$key = strtoupper(str_replace('-', '_', $key));
