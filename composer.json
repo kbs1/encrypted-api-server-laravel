@@ -1,7 +1,6 @@
 {
 	"name": "kbs1/encrypted-api-server-laravel",
 	"description": "Encrypted API - laravel server implementation.",
-	"keywords": ["encrypted", "api"],
 	"type": "library",
 	"license": "MIT",
 	"authors": [

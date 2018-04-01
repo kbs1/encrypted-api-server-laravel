@@ -8,4 +8,13 @@ return [
 
 	// if you want to whitelist only certain IP addresses, provide an array here. Null or empty array turns off whitelisting.
 	'ipv4_whitelist' => null,
+
+	// specify included and excluded routes as patterns, encrypted api won't run on routes that don't match these rules
+	'routes' => [
+		'include' => [
+			'/api/*',
+		],
+		'exclude' => [
+		],
+	],
 ];
