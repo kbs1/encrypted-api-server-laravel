@@ -44,7 +44,7 @@ class EncryptedApiServiceProvider extends ServiceProvider
 		$class::macro('initEncryptedApiResponse', function () {
 			if (!isset($this->overriddenHeaders)) {
 				$this->overriddenHeaders = ['server', 'content-type', 'content-length', 'connection', 'cache-control', 'date'];
-				$this->unencryptedHeaders = $this->unmanagedHeaders = [];
+				$this->visibleHeaders = $this->unmanagedHeaders = [];
 			}
 
 			return $this;
@@ -57,11 +57,11 @@ class EncryptedApiServiceProvider extends ServiceProvider
 			return $this->overriddenHeaders;
 		});
 
-		$class::macro('getUnencryptedHeaders', function () {
+		$class::macro('getVisibleHeaders', function () {
 			if (!isset($this->overriddenHeaders))
 				$this->initEncryptedApiResponse();
 
-			return $this->unencryptedHeaders;
+			return $this->visibleHeaders;
 		});
 
 		$class::macro('getUnmanagedHeaders', function () {
@@ -71,30 +71,30 @@ class EncryptedApiServiceProvider extends ServiceProvider
 			return $this->unmanagedHeaders;
 		});
 
-		$class::macro('withPlainHeader', function ($name) {
+		$class::macro('withVisibleHeader', function ($name) {
 			if (!isset($this->overriddenHeaders))
 				$this->initEncryptedApiResponse();
 
 			$name = strtolower($name);
 
 			if (in_array($name, $this->overriddenHeaders))
-				throw new \InvalidArgumentException($name . ' can not be sent as plain header.');
+				throw new \InvalidArgumentException($name . ' can not be sent as visible header.');
 
-			if (!in_array($name, $this->unencryptedHeaders))
-				$this->unencryptedHeaders[] = $name;
+			if (!in_array($name, $this->visibleHeaders))
+				$this->visibleHeaders[] = $name;
 
 			return $this;
 		});
 
-		$class::macro('withoutPlainHeader', function ($name) {
+		$class::macro('withoutVisibleHeader', function ($name) {
 			if (!isset($this->overriddenHeaders))
 				$this->initEncryptedApiResponse();
 
 			$name = strtolower($name);
 
-			if (($key = array_search($name, $this->unencryptedHeaders)) !== false) {
-				unset($this->unencryptedHeaders[$key]);
-				$this->unencryptedHeaders = array_values($this->unencryptedHeaders);
+			if (($key = array_search($name, $this->visibleHeaders)) !== false) {
+				unset($this->visibleHeaders[$key]);
+				$this->visibleHeaders = array_values($this->visibleHeaders);
 			}
 
 			return $this;

@@ -21,7 +21,7 @@ class OutgoingResponse
 		$content = $this->response->content();
 		$this->response->headers->set('Content-Length', strlen($content));
 
-		// compute which headers should be sent unmanaged
+		// see which headers should be sent unmanaged
 		$headers = $this->response->headers->allPreserveCase();
 		foreach ($headers as $header => $values)
 			if (in_array(strtolower($header), $this->response->getUnmanagedHeaders()))
@@ -34,9 +34,9 @@ class OutgoingResponse
 		foreach ($this->response->getOverriddenHeaders() as $header)
 			$this->response->headers->remove($header);
 
-		$unencryptedHeaders = array_merge($this->response->getUnencryptedHeaders(), $this->response->getUnmanagedHeaders());
+		$visibleHeaders = array_merge($this->response->getVisibleHeaders(), $this->response->getUnmanagedHeaders());
 		foreach ($this->response->headers->all() as $header => $values)
-			if (!in_array($header, $unencryptedHeaders))
+			if (!in_array($header, $visibleHeaders))
 				$this->response->headers->remove($header);
 
 		$this->response->headers->set('Content-Type', 'application/json');
