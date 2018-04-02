@@ -66,7 +66,10 @@ class EncryptedApiMiddleware
 
 	protected function checkIpv4Whitelist($request, $whitelist)
 	{
-		if ($whitelist) {
+		if (is_string($whitelist))
+			$whitelist = [$whitelist];
+
+		if (is_array($whitelist) && count($whitelist) > 0) {
 			foreach ($whitelist as $ip) {
 				if ($request->ip() == $ip)
 					return;
