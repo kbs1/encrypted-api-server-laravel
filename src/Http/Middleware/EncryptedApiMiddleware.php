@@ -61,7 +61,7 @@ class EncryptedApiMiddleware
 			if ($request->is($pattern !== '/' ? trim($pattern, '/') : $pattern))
 				return true;
 
-		return false;
+		return !$included;
 	}
 
 	protected function checkIpv4Whitelist($request, $whitelist)
