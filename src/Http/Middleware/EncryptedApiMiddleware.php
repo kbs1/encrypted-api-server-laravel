@@ -84,13 +84,12 @@ class EncryptedApiMiddleware
 		$message = 'Please make sure the "' . __CLASS__ . '" kernel middleware is the first middleware to run by modifying any service provider that prepends the kernel middleware in application\'s "booted" callback.';
 		$kernel = $this->app->make(Kernel::class);
 
-		$properties = (array) $kernel;
-		$property = chr(0) . '*' . chr(0) . 'middleware';
-		if (isset($properties[$property])) {
-			$middleware = $properties[$property];
+		$reflection = new \ReflectionObject($kernel);
+		$property = $reflection->getProperty('middleware');
+		$property->setAccessible(true);
+		$middleware = $property->getValue($kernel);
 
-			if (!isset($middleware[0]) || $middleware[0] !== __CLASS__)
-				throw new MiddlewareOrderException($message);
-		}
+		if (!isset($middleware[0]) || $middleware[0] !== __CLASS__)
+			throw new MiddlewareOrderException($message);
 	}
 }
