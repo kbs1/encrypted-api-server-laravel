@@ -233,8 +233,11 @@ class IncomingRequest
 
 			// processing file, check if this file is in expected files map
 			$current = &$names;
-			foreach ($keys as $key) {
+			foreach ($keys as $i => $key) {
 				if (!isset($current[$key]))
+					throw new InvalidFilesException;
+
+				if ($i + 1 < count($keys) && !is_array($current[$key]))
 					throw new InvalidFilesException;
 
 				$current = &$current[$key];
